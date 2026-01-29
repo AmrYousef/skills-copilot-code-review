@@ -30,6 +30,15 @@
   --error-light: #ffebee;
   --info: #0c5460;
   --info-light: #d1ecf1;
+  --announcement: #4caf50;
+}
+
+.announcement-banner {
+  background-color: var(--announcement);
+  color: white;
+  text-align: center;
+  padding: 15px;
+  font-weight: bold;
 }
 
 * {
