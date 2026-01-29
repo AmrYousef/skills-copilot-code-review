@@ -1,15 +1,92 @@
 """
-MongoDB database configuration and setup for Mergington High School API
+In-memory database configuration and setup for Mergington High School API
 """
 
-from pymongo import MongoClient
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
+from typing import Dict, List, Any, Optional
 
-# Connect to MongoDB
-client = MongoClient('mongodb://localhost:27017/')
-db = client['mergington_high']
-activities_collection = db['activities']
-teachers_collection = db['teachers']
+# In-memory database
+_activities_db: List[Dict[str, Any]] = []
+_teachers_db: Dict[str, Dict[str, Any]] = {}
+
+# Mock collection classes to mimic MongoDB interface
+class InMemoryCollection:
+    def __init__(self, data_store):
+        self.data_store = data_store
+    
+    def find(self, query: Optional[Dict] = None):
+        if query is None:
+            query = {}
+        results = []
+        for item in self.data_store if isinstance(self.data_store, list) else self.data_store.values():
+            if self._matches(item, query):
+                results.append(item)
+        return results
+    
+    def find_one(self, query: Dict):
+        if "_id" in query:
+            if isinstance(self.data_store, dict):
+                return self.data_store.get(query["_id"])
+            else:
+                for item in self.data_store:
+                    if item.get("_id") == query["_id"]:
+                        return item
+        for item in self.data_store if isinstance(self.data_store, list) else self.data_store.values():
+            if self._matches(item, query):
+                return item
+        return None
+    
+    def insert_one(self, document: Dict):
+        if isinstance(self.data_store, list):
+            self.data_store.append(document)
+        else:
+            self.data_store[document["_id"]] = document
+        return type('InsertResult', (), {'inserted_id': document.get("_id")})()
+    
+    def insert_many(self, documents: List[Dict]):
+        for doc in documents:
+            self.insert_one(doc)
+    
+    def update_one(self, query: Dict, update: Dict):
+        item = self.find_one(query)
+        if item:
+            if "$set" in update:
+                item.update(update["$set"])
+            if "$push" in update:
+                for key, value in update["$push"].items():
+                    if key not in item:
+                        item[key] = []
+                    item[key].append(value)
+    
+    def count_documents(self, query: Dict):
+        return len(self.find(query))
+    
+    def _matches(self, item: Dict, query: Dict) -> bool:
+        if not query:
+            return True
+        for key, value in query.items():
+            if key.startswith("$"):
+                continue
+            if isinstance(value, dict):
+                if "$in" in value:
+                    item_value = item.get(key)
+                    if isinstance(item_value, list):
+                        if not any(v in item_value for v in value["$in"]):
+                            return False
+                    elif item_value not in value["$in"]:
+                        return False
+                elif "$gte" in value:
+                    if item.get(key, "") < value["$gte"]:
+                        return False
+                elif "$lte" in value:
+                    if item.get(key, "") > value["$lte"]:
+                        return False
+            elif item.get(key) != value:
+                return False
+        return True
+
+activities_collection = InMemoryCollection(_activities_db)
+teachers_collection = InMemoryCollection(_teachers_db)
 
 # Methods
 
