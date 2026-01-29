@@ -126,6 +126,11 @@ def init_database():
         for teacher in initial_teachers:
             teachers_collection.insert_one(
                 {"_id": teacher["username"], **teacher})
+    
+    # Initialize announcements if empty
+    if announcements_collection.count_documents({}) == 0:
+        for announcement in initial_announcements:
+            announcements_collection.insert_one(announcement)
 
 
 # Initial database if empty
@@ -282,5 +287,22 @@ initial_teachers = [
         "display_name": "Principal Martinez",
         "password": hash_password("admin789"),
         "role": "admin"
+    }
+]
+
+initial_announcements = [
+    {
+        "title": "Spring Activities Fair",
+        "message": "Join us for the Spring Activities Fair on March 15th! Explore all available clubs and sign up for your favorites. Free refreshments will be provided!",
+        "start_date": "2026-03-01",
+        "expiration_date": "2026-03-15",
+        "created_by": "principal"
+    },
+    {
+        "title": "Welcome Back Students!",
+        "message": "We're excited to have you back for the new semester. Check out our updated activity schedule and join something new today!",
+        "start_date": None,
+        "expiration_date": "2026-02-28",
+        "created_by": "principal"
     }
 ]
